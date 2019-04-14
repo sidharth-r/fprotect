@@ -1,10 +1,9 @@
 <?xml version="1.0"?>
 
 <ruleset>
-	<ruleCount>1</ruleCount>
-	
 	<rule>
 		<ruleId>1</ruleId>
+		<ruleType>basic</ruleType>
 		<attribute>newBalanceOrig</attribute>
 		<operator>lessThan</operator>
 		<value>200</value>
@@ -12,5 +11,41 @@
 		<value2>0</value2>
 		<value2Type>none</value2Type>
 	</rule>
-
+	
+	<rule>
+		<ruleId>2</ruleId>
+		<ruleType>basic</ruleType>
+		<attribute>tid</attribute>
+		<operator>equalTo</operator>
+		<value>14</value>
+		<valueType>int</valueType>
+		<value2>0</value2>
+		<value2Type>none</value2Type>
+	</rule>
+	
+	<rule>
+		<ruleId>3</ruleId>
+		<ruleType>compound</ruleType>
+		<connector>AND</connector>
+		<rule>
+			<ruleId>4</ruleId>
+			<ruleType>basic</ruleType>
+			<attribute>newBalanceOrig</attribute>
+			<operator>lessThan</operator>
+			<value>300</value>
+			<valueType>int</valueType>
+			<value2>0</value2>
+			<value2Type>none</value2Type>
+		</rule>
+		<rule>
+			<ruleId>5</ruleId>
+			<ruleType>basic</ruleType>
+			<attribute>newBalanceOrig</attribute>
+			<operator>greaterThan</operator>
+			<value>200</value>
+			<valueType>int</valueType>
+			<value2>0</value2>
+			<value2Type>none</value2Type>
+		</rule>
+	</rule>
 </ruleset>

@@ -64,50 +64,55 @@ public final class fpMain
 				.load();
 		df = df.select(functions.from_json(df.col("value").cast("string"),trSchema));
 		df = df.select("jsontostructs(CAST(value AS STRING)).*");
-		 	
-    	
-    		/*StreamingQuery dsw = df.writeStream()
-    				.format("csv")
-    				.option("path","/home/fprotect/finprotect/fprotect/out")
-    				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
-    				.outputMode("append")
-    				.start();
-    		dsw.awaitTermination();*/
-    		
-    		df.printSchema();
     		
     		Ruleset ruleset = new Ruleset();
     		
-    		//Dataset<Row> df_det = df.select("*").where("isFraud = 1");
     		Dataset<Row> df_det = df.select("*");
+    		Dataset<Row> dft = df.select("*");
     		
+    		/*
     		for(int i = 0; i < ruleset.ruleCount; i++)
-    		{
+    		{    			
     			Rule rule = ruleset.rules.get(i);
-    			switch(rule.operator)
+    			if(rule.ruleType.equals("basic"))
     			{
-    				case "lessThan":
-    					df_det = df_det.select("*").filter(df_det.col(rule.attribute).lt(rule.value));
-    					break;
-    				case "lessThanOrEqualTo":
-    					df_det = df_det.select("*").filter(df_det.col(rule.attribute).leq(rule.value));
-    					break;
-    				case "greaterThan":
-    					df_det = df_det.select("*").filter(df_det.col(rule.attribute).gt(rule.value));
-    					break;
-    				case "greaterThanOrEqualTo":
-    					df_det = df_det.select("*").filter(df_det.col(rule.attribute).geq(rule.value));
-    					break;
-    				case "equalTo":
-    					df_det = df_det.select("*").filter(df_det.col(rule.attribute).equalTo(rule.value));
-    					break;
-    				case "notEqualTo":
-    					df_det = df_det.select("*").filter(df_det.col(rule.attribute).notEqual(rule.value));
-    					break;
-    				default:
-    			}
-    		}    		
+	    			switch(rule.operator)
+	    			{
+	    				case "lessThan":
+	    					dft = df.select("*").filter(df.col(rule.attribute).lt(rule.value));
+	    					break;
+	    				case "lessThanOrEqualTo":
+	    					dft = df.select("*").filter(df.col(rule.attribute).leq(rule.value));
+	    					break;
+	    				case "greaterThan":
+	    					dft = df.select("*").filter(df.col(rule.attribute).gt(rule.value));
+	    					break;
+	    				case "greaterThanOrEqualTo":
+	    					dft = df.select("*").filter(df.col(rule.attribute).geq(rule.value));
+	    					break;
+	    				case "equalTo":
+	    					dft = df.select("*").filter(df.col(rule.attribute).equalTo(rule.value));
+	    					break;
+	    				case "notEqualTo":
+	    					dft = df.select("*").filter(df.col(rule.attribute).notEqual(rule.value));
+	    					break;
+	    				default:
+	    			}
+	    			
+	    			if(i == 0)
+	    				df_det = dft;
+	    			else
+		    			df_det.union(dft);
+		    	}
+		    	else if(rule.ruleType.equals("compound"))
+		    	{
+		    		
+		    	}
+    		}  */
     		
+    		df.createOrReplaceTempView("trdata");
+    		System.out.println(ruleset.genQuery("trdata"));
+    		df_det = spark.sql(ruleset.genQuery("trdata"));    		
     		
     		StreamingQuery dsw = df_det.writeStream()
     				.outputMode("append")
@@ -120,7 +125,7 @@ public final class fpMain
     		/*StreamingQuery dsw = df_det.writeStream()
 				.format("kafka")
 				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("topic","fp_trdata_det")
+				.option("topic","fp_trdata_det_prim")
 				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
 				.start();
 		dsw.awaitTermination();*/
@@ -137,9 +142,18 @@ public final class fpMain
 		Object value2;
 		String value2Type;
 		
+		String ruleType;
+		String connector;
+		Rule subRule1, subRule2;
+		
+		Rule()
+		{
+		}
+		
 		Rule(int r, String attr, String op, String val, String valType, String val2, String val2Type)
 		{
 			rid = r;
+			ruleType = "basic";
 			attribute = attr;
 			operator = op;
 			valueType = valType;
@@ -147,14 +161,14 @@ public final class fpMain
 			{
 				case "int":
 					value = Integer.parseInt(val);
-					if(value2 == "")
+					if(val2.equals(""))
 						value2 = 0;
 					else
 						value2 = Integer.parseInt(val2);
 					break;
 				case "float":
 					value = Float.parseFloat(val);
-					if(value2 == "")
+					if(val2.equals(""))
 						value2 = 0;
 					else
 						value2 = Float.parseFloat(val2);
@@ -164,6 +178,15 @@ public final class fpMain
 					value2 = val2;
 			}
 			value2Type = val2Type;
+		}
+		
+		Rule(int r, Rule r1, Rule r2, String conn)
+		{
+			rid = r;
+			ruleType = "compound";
+			subRule1 = r1;
+			subRule2 = r2;
+			connector = conn;
 		}
 	}
 	
@@ -191,13 +214,30 @@ public final class fpMain
 			File ruleFile = new File("/home/fprotect/finprotect/fprotect/ruleset.xml");
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
-			Document doc = db.parse(ruleFile);
-			
+			Document doc = db.parse(ruleFile);			
+
 			doc.getDocumentElement().normalize();
-			NodeList nodes = doc.getElementsByTagName("rule");
+			//NodeList nodes = doc.getElementsByTagName("rule");
+			NodeList nodes = doc.getFirstChild().getChildNodes();
 			for(int i = 0; i < nodes.getLength(); i++)
 			{
-				Element e = (Element)nodes.item(i);
+				Node node = nodes.item(i);
+				if(!node.getNodeName().equals("rule"))
+					continue;
+				Rule rule = getRule(node);
+				System.out.println("got rule with rule id "+ rule.rid);
+				rules.add(rule);
+				ruleCount++;
+			}
+		}
+		
+		Rule getRule(Node node)
+		{
+			Element e = (Element)node;
+			Rule rule = new Rule();
+			String rtype = getTag(e,"ruleType");			
+			if(rtype.equals("basic"))
+			{
 				int id = Integer.parseInt(getTag(e,"ruleId"));
 				String attr = getTag(e,"attribute");
 				String op = getTag(e,"operator");
@@ -205,11 +245,32 @@ public final class fpMain
 				String valType = getTag(e,"valueType");
 				String val2 = getTag(e,"value2");
 				String val2Type = getTag(e,"value2Type");
-				Rule rule = new Rule(id,attr,op,val,valType,val2,val2Type);
-
-				rules.add(rule);
-				ruleCount++;
+				rule = new Rule(id,attr,op,val,valType,val2,val2Type);				
 			}
+			else if(rtype.equals("compound"))
+			{
+				rule = getCompoundRule(node);
+				
+			}
+			else
+			{
+				System.out.println("type error");
+			}			
+			return rule;
+		}
+		
+		Rule getCompoundRule(Node node)
+		{
+			Element e = (Element)node;
+			int id = 0;
+			String conn = "";
+			id = Integer.parseInt(getTag(e,"ruleId"));
+			conn = getTag(e,"connector");
+			NodeList nodes = e.getElementsByTagName("rule");
+			Rule r1 = getRule(nodes.item(0));
+			Rule r2 = getRule(nodes.item(1));
+			
+			return new Rule(id,r1,r2,conn);
 		}
 		
 		String getTag(Element element, String tag)
@@ -225,7 +286,60 @@ public final class fpMain
 			}
 			return v;
 		}
+		
+		String genQuery(String view)
+		{
+			String sql = "select * from " + view + " where ";
+			for(int i = 0; i < ruleCount; i++)
+			{
+				sql = sql + ruleStringBasic(rules.get(i));
+				if(i < ruleCount - 1)
+					sql = sql + " OR ";
+			}
+			return sql;		
+		}
+		
+		String ruleStringBasic(Rule rule)
+		{
+			String str = "";
+			if(rule.ruleType.equals("basic"))
+			{
+				str = rule.attribute + " " + convOperator(rule.operator) + " " + convValue(rule.value,rule.valueType);				 
+			}
+			else if(rule.ruleType.equals("compound"))
+			{
+				str = "(" + ruleStringBasic(rule.subRule1) + " " + rule.connector + " " + ruleStringBasic(rule.subRule2) + ")"; 
+			}
+			return str;
+		}
+		
+		String convOperator(String op)
+		{
+			switch(op)
+    			{
+    				case "lessThan":
+    					return "<";
+    				case "lessThanOrEqualTo":
+    					return "<=";
+    				case "greaterThan":
+    					return ">";
+    				case "greaterThanOrEqualTo":
+    					return ">=";
+    				case "equalTo":
+    					return "=";
+    				case "notEqualTo":
+    					return "<>";
+    				default:
+    			}
+    			return "=";    			
+		}
+		
+		String convValue(Object value, String valueType)
+		{
+			if(valueType.equals("string"))
+				return "'"+value+"'";
+			else
+				return String.valueOf(value);
+		}
 	}
 }
-
-

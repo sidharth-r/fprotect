@@ -7,7 +7,7 @@ import java.util.stream.*;
 import com.fasterxml.jackson.databind.*;
 
 
-public class datagen
+public class fpdDataFormatter
 {
 	
 	static class tr
@@ -22,9 +22,9 @@ public class datagen
 		public float oldBalanceDest;
 		public float newBalanceDest;
 		public int isFraud;
-		public int isFlaggedFraud;
+		//public int isFlaggedFraud;
 		
-		public tr(int i, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd, int ifr, int iffr)
+		public tr(int i, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd, int ifr)
 		{
 			tid = i;
 			type = t;
@@ -36,24 +36,33 @@ public class datagen
 			oldBalanceDest = obd;
 			newBalanceDest = nbd;
 			isFraud = ifr;
-			isFlaggedFraud = iffr;
+			//isFlaggedFraud = iffr;
 		}
 	}
 
 	public static void main(String args[]) throws Exception
 	{
+		if(args.length != 4)
+		{
+			System.out.println(args.length);
+			for(int i = 0; i < args.length; i++)
+				System.out.println(args[i]);
+			System.out.println("USAGE: java datagen input-file output-file starting-tid");
+			return;
+		}
 		Pattern pattern = Pattern.compile(",");
-		BufferedReader in = new BufferedReader(new FileReader("/home/fprotect/finprotect/data/ps_500_headless.csv"));
-		int[] id = {-1};
+		BufferedReader in = new BufferedReader(new FileReader(args[1]));
+		int tid = Integer.parseInt(args[3]) - 1;
+		int[] id = {tid};
 		List<tr> trs = in.lines().map(line -> {
 			String[] s = pattern.split(line);
 			id[0]++;
-			return new tr(id[0],s[1],Float.parseFloat(s[2]),s[3],Float.parseFloat(s[4]),Float.parseFloat(s[5]),s[6],Float.parseFloat(s[7]),Float.parseFloat(s[8]),Integer.parseInt(s[9]),Integer.parseInt(s[10]));
+			return new tr(id[0],s[1],Float.parseFloat(s[2]),s[3],Float.parseFloat(s[4]),Float.parseFloat(s[5]),s[6],Float.parseFloat(s[7]),Float.parseFloat(s[8]),Integer.parseInt(s[9]));
 			}).collect(Collectors.toList());
 		ObjectMapper jsonMapper = new ObjectMapper();
 		//jsonMapper.enable(SerializationFeature.INDENT_OUTPUT);
 		
-		FileOutputStream fout = new FileOutputStream("/home/fprotect/finprotect/data/ps_500_hl.json");
+		FileOutputStream fout = new FileOutputStream(args[2]);
 		//jsonMapper.writeValue(fout,trs);
 		//for(listIterator<tr> iter = trs.listIterator(); iter.hasNext();)
 		for(tr t:trs)

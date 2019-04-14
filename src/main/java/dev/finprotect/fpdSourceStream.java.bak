@@ -1,0 +1,16 @@
+package dev.finprotect;
+
+import org.apache.kafka.clients.producer;
+
+public class fpdSourceStream
+{
+	public static void main(String[] args) throws Exception
+	{
+		Properties config = new Properties();
+		config.put("client.id","fprotect");
+		config.put("bootstrap.servers","localhost:9092");
+		config.put("log.dirs","/home/fprotect/finprotect/kafka_2.11-2.0.0/kafka-logs");
+		config.put("acks","all");
+		KafkaProducer<K,V> producer = new KafkaProducer<K,V>(config);		
+	}
+}

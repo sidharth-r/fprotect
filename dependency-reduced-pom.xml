@@ -17,7 +17,7 @@
             <manifest>
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
-              <mainClass>dev.finprotect.datagen</mainClass>
+              <mainClass>dev.finprotect.fpdDataFormatter</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -34,7 +34,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>dev.finprotect.datagen</mainClass>
+                  <mainClass>dev.finprotect.fpdDataFormatter</mainClass>
                 </transformer>
                 <transformer>
                   <resource>META-INF/services/org.apache.spark.sql.sources.DataSourceRegister</resource>
@@ -56,6 +56,12 @@
       </plugin>
     </plugins>
   </build>
+  <repositories>
+    <repository>
+      <id>confluent</id>
+      <url>https://packages.confluent.io/maven/</url>
+    </repository>
+  </repositories>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
