@@ -41,7 +41,7 @@ import org.apache.spark.sql.kafka010.*;
 import org.apache.spark.sql.types.*;
 
 
-public final class fpMain
+public final class fpPrimFilter
 {
 	private static final Pattern delim = Pattern.compile(",");
 	public static void main(String args[]) throws Exception
@@ -49,11 +49,21 @@ public final class fpMain
 		SparkSession spark = SparkSession
 		      .builder()
 		      .master("local[*]")
-		      .appName("fpMain")
+		      .appName("fpPrimFilter")
 		      .config("spark.jars","/home/fprotect/finprotect/fprotect/target/fprotect-0.1.jar")
 		      .getOrCreate();
 		
-		StructType trSchema = new StructType().add("tid","integer").add("type","string").add("amount","float").add("nameOrig","string").add("oldBalanceOrig","float").add("newBalanceOrig","float").add("nameDest","string").add("oldBalanceDest","float").add("newBalanceDest","float").add("isFraud","integer").add("isFlaggedFraud","integer");
+		StructType trSchema = new StructType().add("tid","integer")
+						.add("type","string")
+						.add("amount","float")
+						.add("nameOrig","string")
+						.add("oldBalanceOrig","float")
+						.add("newBalanceOrig","float")
+						.add("nameDest","string")
+						.add("oldBalanceDest","float")
+						.add("newBalanceDest","float")
+						.add("recurrence","integer")
+						.add("destBlacklisted","integer");
 		Dataset<Row> df = spark
 				.readStream()
 				.format("kafka")
@@ -120,12 +130,24 @@ public final class fpMain
     				.start();
     		dsw.awaitTermination();
     		
+    		Dataset<Row> df_undet = df.except(df_det);
+    		
     		df_det = df.select(df.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
     		
     		/*StreamingQuery dsw = df_det.writeStream()
 				.format("kafka")
 				.option("kafka.bootstrap.servers","localhost:9092")
 				.option("topic","fp_trdata_det_prim")
+				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
+				.start();
+		dsw.awaitTermination();*/
+		
+		df_undet = df.select(df.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
+    		
+    		/*StreamingQuery dsw = df_undet.writeStream()
+				.format("kafka")
+				.option("kafka.bootstrap.servers","localhost:9092")
+				.option("topic","fp_trdata_clean_prim")
 				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
 				.start();
 		dsw.awaitTermination();*/

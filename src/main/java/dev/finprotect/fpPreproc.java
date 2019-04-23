@@ -1,158 +1,178 @@
 package dev.finprotect;
 
-import java.util.HashMap;
-import java.util.HashSet;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import java.util.Collections;
+import java.util.Properties;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
+import java.util.UUID;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.stream.*;
 
-import scala.Tuple2;
+import com.fasterxml.jackson.databind.*;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.serialization.StringDeserializer;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
-import org.apache.spark.api.java.*;
-import org.apache.spark.api.java.function.*;
-import org.apache.spark.SparkConf;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.streaming.api.java.*;
-import org.apache.spark.streaming.kafka010.ConsumerStrategies;
-import org.apache.spark.streaming.kafka010.KafkaUtils;
-import org.apache.spark.streaming.kafka010.LocationStrategies;
-import org.apache.spark.streaming.Durations;
-
-
-import org.apache.spark.sql.*;
-import org.apache.spark.sql.catalyst.encoders.RowEncoder;
-import org.apache.spark.sql.Encoders;
-import org.apache.spark.sql.functions.*;
-import org.apache.spark.sql.streaming.*;
-import org.apache.spark.sql.kafka010.*;
-import org.apache.spark.sql.types.*;
-
-//import com.mysql.cj.jdbc.Driver;
-
-
-public final class fpPreproc
+public class fpPreproc
 {
-	private static final Pattern delim = Pattern.compile(",");
-	public static void main(String args[]) throws Exception
+
+	static class TRecord
 	{
-		SparkSession spark = SparkSession
-		      .builder()
-		      .master("local[*]")
-		      .appName("fpMain")
-		      .config("spark.jars","/home/fprotect/finprotect/fprotect/target/fprotect-0.1.jar")
-		      .getOrCreate();
+		public int tid;
+		public String type;
+		public float amount;
+		public String nameOrig;
+		public float oldBalanceOrig;
+		public float newBalanceOrig;
+		public String nameDest;
+		public float oldBalanceDest;
+		public float newBalanceDest;
+		//public int isFraud;
+		//public int isFlaggedFraud;
 		
-		StructType trSchema = new StructType().add("tid","integer").add("type","string").add("amount","float").add("nameOrig","string").add("oldBalanceOrig","float").add("newBalanceOrig","float").add("nameDest","string").add("oldBalanceDest","float").add("newBalanceDest","float").add("isFraud","integer").add("isFlaggedFraud","integer").add("recur","integer");
-		Dataset<Row> df = spark
-				.readStream()
-				.format("kafka")
-				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("subscribe","fp_trdata_raw")
-				.option("startingOffsets","earliest")	//testing only
-				.option("failOnDataLoss","false")
-				.load();
-		df = df.select(functions.from_json(df.col("value").cast("string"),trSchema));
-		df = df.select("jsontostructs(CAST(value AS STRING)).*");
-    		
-    		df.printSchema();
-    		
-    		Dataset<Row> dfh = spark.read()
-    			.format("jdbc")
-    			.option("url","jdbc:mysql://localhost:3306/fprotect")
-    			.option("driver","com.mysql.cj.jdbc.Driver")
-    			.option("dbtable","trhistory")
-    			.option("user","root")
-    			.option("password","root")
-    			.load();
-    			
-    		dfh.printSchema();
-    			
-    		dfh = dfh.select(dfh.col("nameOrig").as("nameOrigH"),dfh.col("nameDest").as("nameDestH"),dfh.col("tid").as("htid"));
-    		dfh.show();
-    		
-    		dfh.createOrReplaceTempView("trHistory");
-    		df.createOrReplaceTempView("trCurr");
-    		
-    		//Dataset<Row> c = spark.sql("SELECT trCurr.tid,count(*) FROM trHistory,trCurr GROUP BY WHERE trCurr.nameOrig = trHistory.nameOrig AND trCurr.nameDest = trHistory.nameDest");
-		//c = c.select("*");
-    		
-    		StructType trSchemaExt = new StructType().add("tid","integer").add("recur","integer");
-    		
-    		Dataset<Row> dfj = df.join(dfh,df.col("nameOrig").equalTo(dfh.col("nameOrigH")).and(df.col("nameDest").equalTo(dfh.col("nameDestH"))),"left_outer");
-    		//dfj = dfj.orderBy(dfj.col("tid"));
-    		
-    		//JavaRDD<tRecordExt> rdd = df.map(rec -> dfh.filter(dfh.col("nameOrig").equalTo(rec.getString(3))).filter(dfh.col("nameDest").equalTo(rec.getString(6))).count());
-    		
-    		/*RowFactory rf = new RowFactory();
-    		/*Dataset<Row> dfe = df.map(new MapFunction<Row,Row>()
-    					{
-    						@Override
-    						public Row call(Row rec)
-    						{
-    							long c = dfh.filter(dfh.col("nameOrig").equalTo(rec.getString(3))).filter(dfh.col("nameDest").equalTo(rec.getString(6))).count();
-    							return rf.create(rec.getInt(0),c);
-    						}
-    					}, RowEncoder.apply(trSchemaExt));*/   		
-    		
-    		
-    		
-    		StreamingQuery dsw = dfj.writeStream()
-    				.outputMode("append")
-    				.format("console")
-    				.start();
-    		dsw.awaitTermination();
-    		
-    		
-    		df = df.select(df.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
-    		
-    		/*StreamingQuery dsw = df.writeStream()
-				.format("kafka")
-				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("topic","fp_trdata")
-				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
-				.start();
-		dsw.awaitTermination();*/
+		public TRecord()
+		{
+		}
 		
-	}
-	
-	static class tRecord
-	{
-		int tid, isFraud;
-		String type, nameOrig, nameDest;
-		float amount, oldBalanceOrig, newBalanceOrig, oldBalanceDest, newBalanceDest;
-		
-		tRecord(int i, String t, float amt, String no, float obo, float nbo, String nd, float obd, float nbd, int ifr)
+		public TRecord(int i, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd)
 		{
 			tid = i;
 			type = t;
-			amount = amt;
+			amount = a;
 			nameOrig = no;
 			oldBalanceOrig = obo;
 			newBalanceOrig = nbo;
 			nameDest = nd;
 			oldBalanceDest = obd;
 			newBalanceDest = nbd;
-			isFraud = ifr;
+			//isFraud = ifr;
+			//isFlaggedFraud = iffr;
 		}
 	}
 	
-	static class tRecordExt
+	static class TRecordExt
 	{
-		int tid;
-		int recur;
-		tRecordExt(int i, int r)
+		public int tid;
+		public String type;
+		public float amount;
+		public String nameOrig;
+		public float oldBalanceOrig;
+		public float newBalanceOrig;
+		public String nameDest;
+		public float oldBalanceDest;
+		public float newBalanceDest;
+		//public int isFraud;
+		//public int isFlaggedFraud;
+		public int recurrence;
+		public int destBlacklisted;
+		
+		public TRecordExt()
 		{
-			tid = i;
-			recur = r;
+		}
+		
+		public TRecordExt(TRecord tr, int recur, int dbl)
+		{
+			tid = tr.tid;
+			type = tr.type;
+			amount = tr.amount;
+			nameOrig = tr.nameOrig;
+			oldBalanceOrig = tr.oldBalanceOrig;
+			newBalanceOrig = tr.newBalanceOrig;
+			nameDest = tr.nameDest;
+			oldBalanceDest = tr.oldBalanceDest;
+			newBalanceDest = tr.newBalanceDest;
+			//isFraud = tr.ifr;
+			//isFlaggedFraud = tr.iffr;
+			recurrence = recur;
+			destBlacklisted = dbl;
 		}
 	}
+	
+	
+	public static void main(String[] args) throws Exception
+	{
+		Properties config = new Properties();
+		config.put("client.id","fpPreprocIn");
+		config.put("bootstrap.servers","localhost:9092");
+		config.put("group.id",UUID.randomUUID().toString());
+		config.put("enable.auto.commit", "true");
+      		config.put("auto.commit.interval.ms", "1000");
+      		config.put("auto.offset.reset","earliest");
+      		config.put("session.timeout.ms", "30000");
+		config.put("log.dirs","/home/fprotect/finprotect/kafka-logs");
+		config.put("acks","all");
+		config.put("key.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+      		config.put("value.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+		
+		Consumer<String,String> cons = new KafkaConsumer<String,String>(config);
+		cons.subscribe(Arrays.asList("fp_trdata_raw"));
+		
+		
+		Properties prodConfig = new Properties();
+		prodConfig.put("bootstrap.servers","localhost:9092");
+		prodConfig.put("client.id","fpPreprocOut");
+		prodConfig.put("key.serializer","org.apache.kafka.common.serialization.StringSerializer");
+      		prodConfig.put("value.serializer","org.apache.kafka.common.serialization.StringSerializer");
+      		
+      		Producer<String,String> prod = new KafkaProducer<String,String>(prodConfig);
+		
+		
+		while(true)
+		{
+			//System.out.println("sadasd");
+			ConsumerRecords<String,String> crecs = cons.poll(1);
+			for(ConsumerRecord<String,String> crec : crecs)
+			{
+				ObjectMapper mapper = new ObjectMapper();
+				TRecord tr = mapper.readValue(crec.value(),TRecord.class);
+				TRecordExt tre = new TRecordExt();
+				
+				try
+				{
+					tre = genExtRecord(tr);
+				}
+				catch(Exception e)
+				{
+					System.out.println(e);
+				}
+				
+				String value = mapper.writeValueAsString(tre);
+				
+				String key = String.valueOf(System.currentTimeMillis());
+				ProducerRecord<String,String> prec = new ProducerRecord<String,String>("fp_trdata",key,value);
+				prod.send(prec);
+				prod.flush();
+			}
+		}
+	}
+	
+	static TRecordExt genExtRecord(TRecord tr) throws Exception
+	{
+		//Class.forName("com.mysql.cj.jdbc.Driver");
+		
+		Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/fprotect?user=root&password=root");
+		
+		PreparedStatement query = conn.prepareStatement("select count(*) from trhistory_unlabeled where nameOrig = ? and nameDest = ?");
+		query.setString(1,tr.nameOrig);
+		query.setString(2,tr.nameDest);		
+		ResultSet res = query.executeQuery();
+		res.first();
+		int recurrence = res.getInt(res.getMetaData().getColumnName(1));
+		
+		query = conn.prepareStatement("select * from blacklist where accountNumber = ?");
+		query.setString(1,tr.nameDest);
+		res = query.executeQuery();
+		res.first();
+		int destBlacklisted = res.isBeforeFirst() ? 1 : 0;
+
+		return new TRecordExt(tr,recurrence,destBlacklisted);
+	}
 }
-
-

@@ -34,7 +34,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>dev.finprotect.fpdDataFormatter</mainClass>
+                  <mainClass>dev.finprotect.fpPreproc</mainClass>
                 </transformer>
                 <transformer>
                   <resource>META-INF/services/org.apache.spark.sql.sources.DataSourceRegister</resource>

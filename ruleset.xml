@@ -48,4 +48,41 @@
 			<value2Type>none</value2Type>
 		</rule>
 	</rule>
+	
+	<rule>
+		<ruleId>6</ruleId>
+		<ruleType>basic</ruleType>
+		<attribute>destBlacklisted</attribute>
+		<operator>equalTo</operator>
+		<value>1</value>
+		<valueType>int</valueType>
+		<value2>0</value2>
+		<value2Type>none</value2Type>
+	</rule>
+	
+	<rule>
+		<ruleId>7</ruleId>
+		<ruleType>compound</ruleType>
+		<connector>AND</connector>
+		<rule>
+			<ruleId>8</ruleId>
+			<ruleType>basic</ruleType>
+			<attribute>recurrence</attribute>
+			<operator>equalTo</operator>
+			<value>0</value>
+			<valueType>int</valueType>
+			<value2>0</value2>
+			<value2Type>none</value2Type>
+		</rule>
+		<rule>
+			<ruleId>9</ruleId>
+			<ruleType>basic</ruleType>
+			<attribute>newBalanceOrig</attribute>
+			<operator>lessThan</operator>
+			<value>1000</value>
+			<valueType>int</valueType>
+			<value2>0</value2>
+			<value2Type>none</value2Type>
+		</rule>
+	</rule>
 </ruleset>
