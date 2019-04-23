@@ -54,6 +54,7 @@ public final class fpPrimFilter
 		      .getOrCreate();
 		
 		StructType trSchema = new StructType().add("tid","integer")
+						.add("step","integer")
 						.add("type","string")
 						.add("amount","float")
 						.add("nameOrig","string")
@@ -63,7 +64,9 @@ public final class fpPrimFilter
 						.add("oldBalanceDest","float")
 						.add("newBalanceDest","float")
 						.add("recurrence","integer")
-						.add("destBlacklisted","integer");
+						.add("destBlacklisted","integer")
+						.add("errorBalanceOrig","integer")
+						.add("errorBalanceDest","integer");
 		Dataset<Row> df = spark
 				.readStream()
 				.format("kafka")

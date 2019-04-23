@@ -42,6 +42,8 @@ import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.clustering.KMeansModel;
 import org.apache.spark.ml.clustering.KMeans;
 import org.apache.spark.ml.evaluation.ClusteringEvaluator;
+import org.apache.spark.ml.classification.RandomForestClassificationModel;
+import org.apache.spark.ml.classification.RandomForestClassifier;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.feature.StringIndexer;
 import org.apache.spark.ml.feature.OneHotEncoderEstimator;
@@ -66,6 +68,7 @@ public final class fpSecFilter
 		      .getOrCreate();
 		
 		StructType trSchema = new StructType().add("tid","integer")
+						.add("step","integer")
 						.add("type","string")
 						.add("amount","float")
 						.add("nameOrig","string")
@@ -75,7 +78,9 @@ public final class fpSecFilter
 						.add("oldBalanceDest","float")
 						.add("newBalanceDest","float")
 						.add("recurrence","integer")
-						.add("destBlacklisted","integer");
+						.add("destBlacklisted","integer")
+						.add("errorBalanceOrig","integer")
+						.add("errorBalanceDest","integer");
 		Dataset<Row> df = spark
 				.readStream()
 				.format("kafka")
@@ -91,7 +96,7 @@ public final class fpSecFilter
     			.format("jdbc")
     			.option("url","jdbc:mysql://localhost:3306/fprotect")
     			.option("driver","com.mysql.cj.jdbc.Driver")
-    			.option("dbtable","trhistory_unlabeled")
+    			.option("dbtable","trhistory")
     			.option("user","root")
     			.option("password","root")
     			.load();
@@ -103,28 +108,49 @@ public final class fpSecFilter
     						.setInputCols(new String[]{"typeIndex"})
     						.setOutputCols(new String[]{"typeVec"});
     		VectorAssembler assembler = new VectorAssembler()
-    						.setInputCols(new String[]{"typeVec","amount","oldBalanceOrig","newBalanceOrig","oldBalanceDest","newBalanceDest","recurrence"})
+    						.setInputCols(new String[]{"typeVec","amount","oldBalanceOrig","newBalanceOrig","oldBalanceDest","newBalanceDest","recurrence", "errorBalanceOrig", "errorBalanceDest"})
     						.setOutputCol("features");
-    		KMeans km = new KMeans().setK(2).setSeed(1L);
+    		//KMeans km = new KMeans().setK(2).setSeed(1L);
     		//KMeansModel kmodel = km.fit(dfh);
-    		//Dataset<Row> pred = kmodel.transform(dfh);				
+    		//Dataset<Row> pred = kmodel.transform(dfh);	
     		
-    		Pipeline pipeline = new Pipeline().setStages(new PipelineStage[]{indexer,encoder,assembler,km});
+    		//df = df.withColumn("isFraud",functions.lit(0));
+    		
+    		RandomForestClassifier rf = new RandomForestClassifier()
+    						.setLabelCol("isFraud")
+    						.setFeaturesCol("features");			
+    		
+    		Pipeline pipeline = new Pipeline().setStages(new PipelineStage[]{indexer,encoder,assembler,rf});
+    		System.out.println("Training...");
     		PipelineModel model = pipeline.fit(dfh);
     		
+    		System.out.println("Predicting...");
     		Dataset<Row> preds = model.transform(df);
     		
-    		preds = preds.select(preds.col("tid"),preds.col("prediction").as("isFraud"));
+    		
+    		preds = preds.select(preds.col("tid"),preds.col("prediction").as("isFraud").cast("int"));
+    		//preds = preds.select(preds.col("tid"),preds.col("isFraud"));
+    		
+    		preds.printSchema();
+    		
+    		//preds = preds.filter(preds.col("isFraud").equalTo(1));
+    		/*
+    		StreamingQuery dswc = preds.writeStream()
+    				.outputMode("append")
+    				.format("console")
+    				.start();
+    		dswc.awaitTermination();*/
     		
     		preds = preds.select(preds.col("tid").cast("string").as("key"), functions.to_json(functions.struct("*")).cast("string").as("value"));
-    				
+    		
+    		System.out.println("Writing to output stream...");		
     		StreamingQuery dsw = preds.writeStream()
 				.format("kafka")
 				.option("kafka.bootstrap.servers","localhost:9092")
 				.option("topic","fp_results")
 				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
 				.start();
-		dsw.awaitTermination();		
+		dsw.awaitTermination();	
     		
     		/********************** Performance evaluation **********************/
     		/*

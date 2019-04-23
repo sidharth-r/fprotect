@@ -48,7 +48,7 @@ public class fpOutStreamDBSink
 		config.put("group.id",UUID.randomUUID().toString());
 		config.put("enable.auto.commit", "true");
       		config.put("auto.commit.interval.ms", "1000");
-      		//config.put("auto.offset.reset","earliest");
+      		config.put("auto.offset.reset","earliest");
       		config.put("session.timeout.ms", "30000");
 		config.put("log.dirs","/home/fprotect/finprotect/kafka-logs");
 		config.put("acks","all");

@@ -27,6 +27,7 @@ public class fpPreproc
 	static class TRecord
 	{
 		public int tid;
+		public int step;
 		public String type;
 		public float amount;
 		public String nameOrig;
@@ -42,9 +43,10 @@ public class fpPreproc
 		{
 		}
 		
-		public TRecord(int i, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd)
+		public TRecord(int i, int s, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd)
 		{
 			tid = i;
+			step = s;
 			type = t;
 			amount = a;
 			nameOrig = no;
@@ -61,6 +63,7 @@ public class fpPreproc
 	static class TRecordExt
 	{
 		public int tid;
+		public int step;
 		public String type;
 		public float amount;
 		public String nameOrig;
@@ -73,6 +76,8 @@ public class fpPreproc
 		//public int isFlaggedFraud;
 		public int recurrence;
 		public int destBlacklisted;
+		public int errorBalanceOrig;
+		public int errorBalanceDest;
 		
 		public TRecordExt()
 		{
@@ -81,6 +86,7 @@ public class fpPreproc
 		public TRecordExt(TRecord tr, int recur, int dbl)
 		{
 			tid = tr.tid;
+			step = tr.step;
 			type = tr.type;
 			amount = tr.amount;
 			nameOrig = tr.nameOrig;
@@ -93,6 +99,9 @@ public class fpPreproc
 			//isFlaggedFraud = tr.iffr;
 			recurrence = recur;
 			destBlacklisted = dbl;
+			errorBalanceOrig = (int)(newBalanceOrig + amount - oldBalanceOrig);
+			errorBalanceDest = (int)(oldBalanceDest + amount - newBalanceDest);
+			//isFraud = tr.isFraud;
 		}
 	}
 	
@@ -127,7 +136,6 @@ public class fpPreproc
 		
 		while(true)
 		{
-			//System.out.println("sadasd");
 			ConsumerRecords<String,String> crecs = cons.poll(1);
 			for(ConsumerRecord<String,String> crec : crecs)
 			{
@@ -155,9 +163,7 @@ public class fpPreproc
 	}
 	
 	static TRecordExt genExtRecord(TRecord tr) throws Exception
-	{
-		//Class.forName("com.mysql.cj.jdbc.Driver");
-		
+	{		
 		Connection conn = DriverManager.getConnection("jdbc:mysql://localhost/fprotect?user=root&password=root");
 		
 		PreparedStatement query = conn.prepareStatement("select count(*) from trhistory_unlabeled where nameOrig = ? and nameDest = ?");
@@ -171,7 +177,8 @@ public class fpPreproc
 		query.setString(1,tr.nameDest);
 		res = query.executeQuery();
 		res.first();
-		int destBlacklisted = res.isBeforeFirst() ? 1 : 0;
+		int destBlacklisted = res.isBeforeFirst() ? 1 : 0;	
+		
 
 		return new TRecordExt(tr,recurrence,destBlacklisted);
 	}

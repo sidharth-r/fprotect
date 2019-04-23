@@ -15,6 +15,10 @@ KAFKA_DIR="kafka_2.11-2.0.0"
 cd $PROJ_DIR
 
 #kafka
+./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_trdata_raw
+./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_trdata
+./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_results
+
 ./$KAFKA_DIR/bin/kafka-server-stop.sh
 
 sleep 3

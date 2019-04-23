@@ -24,6 +24,7 @@ public class fpdHistoryGenerator
 	static class TRecord
 	{
 		public int tid;
+		public int step;
 		public String type;
 		public float amount;
 		public String nameOrig;
@@ -39,9 +40,10 @@ public class fpdHistoryGenerator
 		{
 		}
 		
-		public TRecord(int i, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd, int ifr)
+		public TRecord(int i, int s, String t, float a, String no, float obo, float nbo, String nd, float obd, float nbd, int ifr)
 		{
 			tid = i;
+			step = s;
 			type = t;
 			amount = a;
 			nameOrig = no;
@@ -58,6 +60,7 @@ public class fpdHistoryGenerator
 	static class TRecordExt
 	{
 		public int tid;
+		public int step;
 		public String type;
 		public float amount;
 		public String nameOrig;
@@ -70,6 +73,8 @@ public class fpdHistoryGenerator
 		//public int isFlaggedFraud;
 		public int recurrence;
 		public int destBlacklisted;
+		public int errorBalanceOrig;
+		public int errorBalanceDest;
 		
 		public TRecordExt()
 		{
@@ -78,6 +83,7 @@ public class fpdHistoryGenerator
 		public TRecordExt(TRecord tr, int recur, int dbl)
 		{
 			tid = tr.tid;
+			step = tr.step;
 			type = tr.type;
 			amount = tr.amount;
 			nameOrig = tr.nameOrig;
@@ -90,19 +96,21 @@ public class fpdHistoryGenerator
 			//isFlaggedFraud = tr.iffr;
 			recurrence = recur;
 			destBlacklisted = dbl;
+			errorBalanceOrig = (int)(newBalanceOrig + amount - oldBalanceOrig);
+			errorBalanceDest = (int)(oldBalanceDest + amount - newBalanceDest);
 		}
 	}
 	
 	
 	public static void main(String[] args) throws Exception
 	{
-		BufferedReader in = new BufferedReader(new FileReader(args[1]));
+		BufferedReader in = new BufferedReader(new FileReader(args[0]));
 		int i = 1;
 		
 		boolean nolabel = false;
-		if(args.length > 2)
+		if(args.length > 1)
 		{
-			if(args[2].equals("nolabel"))
+			if(args[1].equals("nolabel"))
 				nolabel = true;
 		}
 		
@@ -116,9 +124,9 @@ public class fpdHistoryGenerator
 			stmt.executeUpdate("delete from trhistory");
 		PreparedStatement ps;
 		if(nolabel)
-			ps = conn.prepareStatement("insert into trhistory_unlabeled values(?,?,?,?,?,?,?,?,?,?,?)");
+			ps = conn.prepareStatement("insert into trhistory_unlabeled values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		else
-			ps = conn.prepareStatement("insert into trhistory values(?,?,?,?,?,?,?,?,?,?,?,?)");
+			ps = conn.prepareStatement("insert into trhistory values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
 		
 		String rec = in.readLine();
 		while(rec != null)
@@ -127,18 +135,21 @@ public class fpdHistoryGenerator
 			TRecordExt tre = genExtRecord(tr);
 			
 			ps.setInt(1,tre.tid);
-			ps.setString(2,tre.type);
-			ps.setFloat(3,tre.amount);
-			ps.setString(4,tre.nameOrig);
-			ps.setFloat(5,tre.oldBalanceOrig);
-			ps.setFloat(6,tre.newBalanceOrig);
-			ps.setString(7,tre.nameDest);
-			ps.setFloat(8,tre.oldBalanceDest);
-			ps.setFloat(9,tre.newBalanceDest);
-			ps.setInt(10,tre.recurrence);
-			ps.setInt(11,tre.destBlacklisted);
+			ps.setInt(2,tre.step);
+			ps.setString(3,tre.type);
+			ps.setFloat(4,tre.amount);
+			ps.setString(5,tre.nameOrig);
+			ps.setFloat(6,tre.oldBalanceOrig);
+			ps.setFloat(7,tre.newBalanceOrig);
+			ps.setString(8,tre.nameDest);
+			ps.setFloat(9,tre.oldBalanceDest);
+			ps.setFloat(10,tre.newBalanceDest);
+			ps.setInt(11,tre.recurrence);
+			ps.setInt(12,tre.destBlacklisted);
+			ps.setInt(13,tre.errorBalanceOrig);
+			ps.setInt(14,tre.errorBalanceDest);
 			if(!nolabel)
-				ps.setInt(12,tre.isFraud);
+				ps.setInt(15,tre.isFraud);
 			
 			ps.executeUpdate();
 			
