@@ -22,10 +22,14 @@ public class fpPerfEval
 		Statement stmt = conn.createStatement();
 		stmt.executeUpdate("delete from perfeval");
 		
-		stmt.executeUpdate("insert into perfeval(tid,expected,actual) select fprotect.results.tid,detection_expected.isFraud,fprotect.results.isFraud from fprotect.results join detection_expected on fprotect.results.tid = detection_expected.tid");
+		stmt.executeUpdate("insert into perfeval(tid,expected,actual) select fprotect.det_sec.tid,detection_expected.isFraud,fprotect.det_sec.isFraud from fprotect.det_sec join detection_expected on fprotect.det_sec.tid = detection_expected.tid");
 		
-		int tp, tn, fp, fn, t, f, p, n;
+		int tp, tn, fp, fn, t, f, p, n, total;
 		float acc, prc, rec;
+                
+                res = stmt.executeQuery("select count(*) from perfeval");
+                res.first();
+                total = res.getInt(res.getMetaData().getColumnName(1));
 		
 		res = stmt.executeQuery("select count(*) from perfeval where expected = 1 and actual = 1");
 		res.first();
@@ -54,6 +58,7 @@ public class fpPerfEval
 		prc = (float)tp/(tp+fp);
 		rec = (float)tp/p;
 		
+                System.out.println("Processed "+total+" records.");
 		System.out.println("TP: "+tp);
 		System.out.println("TN: "+tn);
 		System.out.println("FP: "+fp);
