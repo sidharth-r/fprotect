@@ -18,6 +18,7 @@ cd $PROJ_DIR
 ./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_trdata_raw
 ./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_trdata
 ./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_results
+./$KAFKA_DIR/bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic fp_det_prim
 
 ./$KAFKA_DIR/bin/kafka-server-stop.sh
 

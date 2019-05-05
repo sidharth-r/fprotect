@@ -10,7 +10,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-public class fpdPerfEval
+public class fpPerfEval
 {
 	static Connection conn;	
 	

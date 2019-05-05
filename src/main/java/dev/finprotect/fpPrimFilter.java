@@ -127,23 +127,23 @@ public final class fpPrimFilter
     		System.out.println(ruleset.genQuery("trdata"));
     		df_det = spark.sql(ruleset.genQuery("trdata"));    		
     		
-    		StreamingQuery dsw = df_det.writeStream()
+    		StreamingQuery dswc = df_det.writeStream()
     				.outputMode("append")
     				.format("console")
     				.start();
-    		dsw.awaitTermination();
+    		dswc.awaitTermination();
     		
     		Dataset<Row> df_undet = df.except(df_det);
     		
     		df_det = df.select(df.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
     		
-    		/*StreamingQuery dsw = df_det.writeStream()
+    		StreamingQuery dsw = df_det.writeStream()
 				.format("kafka")
 				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("topic","fp_trdata_det_prim")
+				.option("topic","fp_det_prim")
 				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
 				.start();
-		dsw.awaitTermination();*/
+		dsw.awaitTermination();
 		
 		df_undet = df.select(df.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
     		

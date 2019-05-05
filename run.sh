@@ -6,6 +6,7 @@ PROJ_SUBDIR="fprotect"
 SRC_DIR="$PROJ_SUBDIR/src/main/java/dev/finprotect/"
 SRC_PACKAGE='dev.finprotect'
 #SRC_CLASS='fpMain'
+#SRC_CLASS='fpPrimFilter'
 SRC_CLASS='fpSecFilter'
 
 LIB_DIR="$PROJ_SUBDIR/lib"
