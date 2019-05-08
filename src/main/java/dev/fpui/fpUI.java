@@ -5,7 +5,6 @@
  */
 package dev.fpui;
 
-import dev.finprotect.fpEngine;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -15,6 +14,8 @@ import java.io.InputStream;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.ButtonModel;
+import javax.swing.JRadioButton;
 
 /**
  *
@@ -24,7 +25,7 @@ public class fpUI extends javax.swing.JFrame {
     
     Properties props;
     
-    fpEngine fp;
+    fpuiEngine fp;
     
     Process pPreProc;
     Process pPrimFilter;
@@ -39,11 +40,11 @@ public class fpUI extends javax.swing.JFrame {
         
         buttonStop.setEnabled(false);
         
-        OutLogger outPrim = new OutLogger(textOutPrim);
-        OutLogger outSec = new OutLogger(textOutSec);
-        OutLogger log = new OutLogger(textLog);
-        OutLogger stats = new OutLogger(textOutStats);
-        OutLogger[] outs = new OutLogger[]{outPrim, outSec, log, stats};
+        fpuiOutLogger outPrim = new fpuiOutLogger(textOutPrim);
+        fpuiOutLogger outSec = new fpuiOutLogger(textOutSec);
+        fpuiOutLogger log = new fpuiOutLogger(textLog);
+        fpuiOutLogger stats = new fpuiOutLogger(textOutStats);
+        fpuiOutLogger[] outs = new fpuiOutLogger[]{outPrim, outSec, log, stats};
         
         props = new Properties();
         InputStream in = this.getClass().getResourceAsStream("/FProtect.properties");
@@ -58,7 +59,7 @@ public class fpUI extends javax.swing.JFrame {
         else
             props.store(new FileOutputStream("FProtect.properties"), null);
         
-        fp = new fpEngine(props, outs);
+        fp = new fpuiEngine(props, outs);
     }
 
     /**
@@ -70,6 +71,7 @@ public class fpUI extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        buttonGroupModels = new javax.swing.ButtonGroup();
         panelMain = new javax.swing.JPanel();
         panelTextArea = new javax.swing.JScrollPane();
         textOutSec = new javax.swing.JTextArea();
@@ -85,6 +87,10 @@ public class fpUI extends javax.swing.JFrame {
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
+        jLabel4 = new javax.swing.JLabel();
+        radioButtonModelRf = new javax.swing.JRadioButton();
+        radioButtonModelGbt = new javax.swing.JRadioButton();
+        radioButtonModelLr = new javax.swing.JRadioButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("FProtect");
@@ -141,6 +147,19 @@ public class fpUI extends javax.swing.JFrame {
 
         jLabel3.setText("Log:");
 
+        jLabel4.setText("Classification model:");
+
+        buttonGroupModels.add(radioButtonModelRf);
+        radioButtonModelRf.setSelected(true);
+        radioButtonModelRf.setText("Random Forest");
+
+        buttonGroupModels.add(radioButtonModelGbt);
+        radioButtonModelGbt.setText("Gradient Boosted Tree");
+        radioButtonModelGbt.setToolTipText("");
+
+        buttonGroupModels.add(radioButtonModelLr);
+        radioButtonModelLr.setText("Logistic Regression");
+
         javax.swing.GroupLayout panelMainLayout = new javax.swing.GroupLayout(panelMain);
         panelMain.setLayout(panelMainLayout);
         panelMainLayout.setHorizontalGroup(
@@ -152,15 +171,25 @@ public class fpUI extends javax.swing.JFrame {
                         .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(panelMainLayout.createSequentialGroup()
                                 .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(buttonEval, javax.swing.GroupLayout.PREFERRED_SIZE, 181, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(jLabel3)
+                                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 261, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(0, 64, Short.MAX_VALUE))
+                            .addGroup(panelMainLayout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelMainLayout.createSequentialGroup()
+                                        .addComponent(buttonStart, javax.swing.GroupLayout.PREFERRED_SIZE, 133, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(buttonStop, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
                                     .addGroup(panelMainLayout.createSequentialGroup()
-                                        .addContainerGap()
-                                        .addComponent(buttonStart, javax.swing.GroupLayout.PREFERRED_SIZE, 133, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addComponent(buttonEval, javax.swing.GroupLayout.PREFERRED_SIZE, 181, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(34, 34, 34)
-                                .addComponent(buttonStop, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(jLabel3)
-                            .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 261, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, Short.MAX_VALUE)
+                                        .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                            .addComponent(jLabel4)
+                                            .addComponent(radioButtonModelGbt)
+                                            .addComponent(radioButtonModelRf)
+                                            .addComponent(radioButtonModelLr))
+                                        .addGap(0, 0, Short.MAX_VALUE)))))
+                        .addGap(18, 18, 18)
                         .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addComponent(panelTextArea2, javax.swing.GroupLayout.PREFERRED_SIZE, 451, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel1))
@@ -173,27 +202,35 @@ public class fpUI extends javax.swing.JFrame {
         panelMainLayout.setVerticalGroup(
             panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(panelMainLayout.createSequentialGroup()
+                .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel2))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(panelMainLayout.createSequentialGroup()
-                        .addGap(0, 273, Short.MAX_VALUE)
-                        .addComponent(buttonEval, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel4)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 244, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(18, 18, 18)
-                        .addComponent(jLabel3))
-                    .addGroup(panelMainLayout.createSequentialGroup()
-                        .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel1)
-                            .addComponent(jLabel2))
+                        .addComponent(radioButtonModelRf)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(radioButtonModelGbt)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(radioButtonModelLr)
                         .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(panelTextArea2)
-                            .addComponent(panelTextArea)
                             .addGroup(panelMainLayout.createSequentialGroup()
-                                .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(buttonStart, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(buttonStop, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(0, 0, Short.MAX_VALUE)))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 135, Short.MAX_VALUE)
+                                .addComponent(buttonEval, javax.swing.GroupLayout.PREFERRED_SIZE, 43, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 244, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(18, 18, 18)
+                                .addComponent(jLabel3))
+                            .addGroup(panelMainLayout.createSequentialGroup()
+                                .addGap(62, 62, 62)
+                                .addGroup(panelMainLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(buttonStop, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(buttonStart, javax.swing.GroupLayout.PREFERRED_SIZE, 45, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(0, 0, Short.MAX_VALUE))))
+                    .addComponent(panelTextArea2)
+                    .addComponent(panelTextArea))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 127, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
@@ -223,6 +260,14 @@ public class fpUI extends javax.swing.JFrame {
         try {
             buttonStart.setEnabled(false);
             buttonStop.setEnabled(true);
+            String model = "";
+            if(radioButtonModelRf.isSelected())
+                model = "RANDOM_FOREST";
+            else if(radioButtonModelGbt.isSelected())
+                model = "GBT";
+            else if(radioButtonModelLr.isSelected())
+                model = "LOGISTIC_REGRESSION";
+            fp.setClassifier(model);
             fp.start();
         } catch (IOException ex) {
             Logger.getLogger(fpUI.class.getName()).log(Level.SEVERE, null, ex);
@@ -291,16 +336,21 @@ public class fpUI extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton buttonEval;
+    private javax.swing.ButtonGroup buttonGroupModels;
     private javax.swing.JButton buttonStart;
     private javax.swing.JButton buttonStop;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JPanel panelMain;
     private javax.swing.JScrollPane panelTextArea;
     private javax.swing.JScrollPane panelTextArea2;
+    private javax.swing.JRadioButton radioButtonModelGbt;
+    private javax.swing.JRadioButton radioButtonModelLr;
+    private javax.swing.JRadioButton radioButtonModelRf;
     private javax.swing.JTextArea textLog;
     private javax.swing.JTextArea textOutPrim;
     private javax.swing.JTextArea textOutSec;

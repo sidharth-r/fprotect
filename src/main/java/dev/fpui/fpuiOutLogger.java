@@ -11,13 +11,13 @@ import javax.swing.JTextArea;
  *
  * @author fprotect
  */
-public class OutLogger{
+public class fpuiOutLogger{
     
     JTextArea to;
     
     boolean autoRefresh;
 
-    OutLogger(JTextArea textOut)
+    fpuiOutLogger(JTextArea textOut)
     {
         to = textOut;
         autoRefresh = false;

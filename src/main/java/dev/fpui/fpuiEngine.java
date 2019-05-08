@@ -3,10 +3,8 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package dev.finprotect;
+package dev.fpui;
 
-import dev.fpui.OutLogger;
-import dev.fpui.tProcOutWriter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,7 +15,7 @@ import org.apache.spark.launcher.SparkLauncher;
  *
  * @author fprotect
  */
-public class fpEngine {
+public class fpuiEngine {
     
     Runtime rt;
     
@@ -30,27 +28,27 @@ public class fpEngine {
     Process pStreamSinkPrim;
     Process pStreamSinkSec;
     
-    OutLogger outPrim;
-    OutLogger outSec;
-    OutLogger log;
-    OutLogger stats;
+    fpuiOutLogger outPrim;
+    fpuiOutLogger outSec;
+    fpuiOutLogger log;
+    fpuiOutLogger stats;
     
     String sCmdPreprocStart;
     String sCmdStreamSinkStart;
     String sCmdPerfEval;
     
-    tProcOutWriter writerPreProc;
-    tProcOutWriter writerPreProcError;
-    tProcOutWriter writerPrimFilter;
-    tProcOutWriter writerPrimFilterError;
-    tProcOutWriter writerSecFilter;
-    tProcOutWriter writerSecFilterError;
-    tProcOutWriter writerStreamSinkPrim;
-    tProcOutWriter writerStreamSinkPrimError;
-    tProcOutWriter writerStreamSinkSec;
-    tProcOutWriter writerStreamSinkSecError;
+    fpuiProcOutWriter writerPreProc;
+    fpuiProcOutWriter writerPreProcError;
+    fpuiProcOutWriter writerPrimFilter;
+    fpuiProcOutWriter writerPrimFilterError;
+    fpuiProcOutWriter writerSecFilter;
+    fpuiProcOutWriter writerSecFilterError;
+    fpuiProcOutWriter writerStreamSinkPrim;
+    fpuiProcOutWriter writerStreamSinkPrimError;
+    fpuiProcOutWriter writerStreamSinkSec;
+    fpuiProcOutWriter writerStreamSinkSecError;
     
-    public fpEngine(Properties props, OutLogger[] outs)
+    public fpuiEngine(Properties props, fpuiOutLogger[] outs)
     {
         rt = Runtime.getRuntime();
         
@@ -95,43 +93,48 @@ public class fpEngine {
                 .setMaster(sparkMaster);
     }
     
+    public void setClassifier(String classifierModel)
+    {
+        launchSecFilter.addAppArgs(classifierModel);
+    }
+    
     public void start() throws IOException
     {
         log.write("Starting preprocessor.");
         log.writeDebug(sCmdPreprocStart);
         pPreProc = rt.exec(sCmdPreprocStart);
-        writerPreProc = new tProcOutWriter(pPreProc.getInputStream(),log);
+        writerPreProc = new fpuiProcOutWriter(pPreProc.getInputStream(),log);
         writerPreProc.start();
-        writerPreProcError = new tProcOutWriter(pPreProc.getErrorStream(),log);
+        writerPreProcError = new fpuiProcOutWriter(pPreProc.getErrorStream(),log);
         writerPreProcError.start();
         
         log.write("Starting primary filter.");
         pPrimFilter = launchPrimFilter.launch();
-        writerPrimFilter = new tProcOutWriter(pPrimFilter.getInputStream(),outPrim);
+        writerPrimFilter = new fpuiProcOutWriter(pPrimFilter.getInputStream(),outPrim);
         writerPrimFilter.start();
-        writerPrimFilterError = new tProcOutWriter(pPrimFilter.getErrorStream(),outPrim);
+        writerPrimFilterError = new fpuiProcOutWriter(pPrimFilter.getErrorStream(),outPrim);
         writerPrimFilterError.start();
         
         log.write("Starting secondary filter.");
         pSecFilter = launchSecFilter.launch();
-        writerSecFilter = new tProcOutWriter(pSecFilter.getInputStream(),outSec);
+        writerSecFilter = new fpuiProcOutWriter(pSecFilter.getInputStream(),outSec);
         writerSecFilter.start();
-        writerSecFilterError = new tProcOutWriter(pSecFilter.getErrorStream(),outSec);
+        writerSecFilterError = new fpuiProcOutWriter(pSecFilter.getErrorStream(),outSec);
         writerSecFilterError.start();
         
         log.write("Starting stream sinks.");
         log.writeDebug(sCmdStreamSinkStart+" fp_det_prim det_prim");
         pStreamSinkPrim = rt.exec(sCmdStreamSinkStart+" fp_det_prim det_prim");    
-        writerStreamSinkPrim = new tProcOutWriter(pStreamSinkPrim.getInputStream(),log);
+        writerStreamSinkPrim = new fpuiProcOutWriter(pStreamSinkPrim.getInputStream(),log);
         writerStreamSinkPrim.start();
-        writerStreamSinkPrimError = new tProcOutWriter(pStreamSinkPrim.getErrorStream(),log);
+        writerStreamSinkPrimError = new fpuiProcOutWriter(pStreamSinkPrim.getErrorStream(),log);
         writerStreamSinkPrimError.start();
         
         log.writeDebug(sCmdStreamSinkStart+" fp_det_sec det_sec");
         pStreamSinkSec = rt.exec(sCmdStreamSinkStart+" fp_det_sec det_sec");    
-        writerStreamSinkSec = new tProcOutWriter(pStreamSinkSec.getInputStream(),log);
+        writerStreamSinkSec = new fpuiProcOutWriter(pStreamSinkSec.getInputStream(),log);
         writerStreamSinkSec.start();
-        writerStreamSinkSecError = new tProcOutWriter(pStreamSinkSec.getErrorStream(),log);
+        writerStreamSinkSecError = new fpuiProcOutWriter(pStreamSinkSec.getErrorStream(),log);
         writerStreamSinkSecError.start();
     }
     

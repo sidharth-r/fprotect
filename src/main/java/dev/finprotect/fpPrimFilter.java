@@ -3,6 +3,8 @@ package dev.finprotect;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.io.File;
+import java.io.FileInputStream;
+import java.util.Properties;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
@@ -21,79 +23,94 @@ public final class fpPrimFilter
 	private static final Pattern delim = Pattern.compile(",");
 	public static void main(String args[]) throws Exception
 	{
-		SparkSession spark = SparkSession
-		      .builder()
-		      .master("local[*]")
-		      .appName("fpPrimFilter")
-		      .config("spark.jars","/home/fprotect/finprotect/fprotect/target/fprotect-0.1.jar")
-		      .getOrCreate();
-		
-		StructType trSchema = new StructType().add("tid","integer")
-						.add("step","integer")
-						.add("type","string")
-						.add("amount","float")
-						.add("nameOrig","string")
-						.add("oldBalanceOrig","float")
-						.add("newBalanceOrig","float")
-						.add("nameDest","string")
-						.add("oldBalanceDest","float")
-						.add("newBalanceDest","float")
-						.add("recurrence","integer")
-						.add("destBlacklisted","integer")
-						.add("errorBalanceOrig","integer")
-						.add("errorBalanceDest","integer");
-		Dataset<Row> df = spark
-				.readStream()
-				.format("kafka")
-				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("subscribe","fp_trdata")
-				.option("startingOffsets","earliest")	//testing only
-				.option("failOnDataLoss","false")
-				.load();
-		df = df.select(functions.from_json(df.col("value").cast("string"),trSchema));
-		df = df.select("jsontostructs(CAST(value AS STRING)).*");
-    		
-    		Ruleset ruleset = new Ruleset();
-                System.out.println("Loaded ruleset with "+ruleset.ruleCount+" rules.");
-                System.out.println("Starting filter");
-                System.out.println("Writing detections to topic fp_det_prim");
-                System.out.println("Writing non-detection to topic fp_clean_prim");
-    		
-    		Dataset<Row> df_det;
-    		
-    		df.createOrReplaceTempView("trdata");
-    		//System.out.println(ruleset.genQuery("trdata"));
-    		df_det = spark.sql(ruleset.genQuery("trdata"));    		
-    		
-    		StreamingQuery dswc = df_det.writeStream()
-    				.outputMode("append")
-    				.format("console")
-    				.start();
-    		dswc.awaitTermination();
-    		
-    		Dataset<Row> df_undet = df.except(df_det);
-    		
-    		df_det = df_det.select(df_det.col("tid"), df_det.col("isFraud").cast("int"));
-                df_det = df_det.select(df_det.col("tid").cast("string").as("key"),functions.to_json(functions.struct("*")).cast("string").as("value"));
-    		
-    		StreamingQuery dsw = df_det.writeStream()
-				.format("kafka")
-				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("topic","fp_det_prim")
-				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
-				.start();
-		
-		df_undet = df_undet.select(df_undet.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
-    		
-    		StreamingQuery dswu = df_undet.writeStream()
-				.format("kafka")
-				.option("kafka.bootstrap.servers","localhost:9092")
-				.option("topic","fp_clean_prim")
-				.option("checkpointLocation","/home/fprotect/finprotect/fprotect/checkpoints")
-				.start();
-		
-                dsw.awaitTermination();
-                dswu.awaitTermination();
+            Properties props = new Properties();
+            try{
+                props.load(new FileInputStream(new File("FProtect.properties")));  
+            }
+            catch(Exception e)
+            {
+                System.out.println("Failed to load properties file. Exiting...");
+                return;
+            }
+            
+            String sparkAppJar = props.getProperty("fprotect.classpath");
+            String sparkCheckpointDir = props.getProperty("spark.checkpoints.dir.prim");
+            String sparkMaster = props.getProperty("spark.master");
+            String kafkaBootstrapServer = props.getProperty("kafka.bootstrap.server");
+
+            SparkSession spark = SparkSession
+                  .builder()
+                  .master(sparkMaster)
+                  .appName("fpPrimFilter")
+                  .config("spark.jars",sparkAppJar)
+                  .getOrCreate();
+
+            StructType trSchema = new StructType().add("tid","integer")
+                                            .add("step","integer")
+                                            .add("type","string")
+                                            .add("amount","float")
+                                            .add("nameOrig","string")
+                                            .add("oldBalanceOrig","float")
+                                            .add("newBalanceOrig","float")
+                                            .add("nameDest","string")
+                                            .add("oldBalanceDest","float")
+                                            .add("newBalanceDest","float")
+                                            .add("recurrence","integer")
+                                            .add("destBlacklisted","integer")
+                                            .add("errorBalanceOrig","integer")
+                                            .add("errorBalanceDest","integer");
+            Dataset<Row> df = spark
+                            .readStream()
+                            .format("kafka")
+                            .option("kafka.bootstrap.servers",kafkaBootstrapServer)
+                            .option("subscribe","fp_trdata")
+                            .option("startingOffsets","earliest")	//testing only
+                            .option("failOnDataLoss","false")
+                            .load();
+            df = df.select(functions.from_json(df.col("value").cast("string"),trSchema));
+            df = df.select("jsontostructs(CAST(value AS STRING)).*");
+
+            Ruleset ruleset = new Ruleset(props.getProperty("fprotect.ruleset"));
+            System.out.println("Loaded ruleset with "+ruleset.ruleCount+" rules.");
+            System.out.println("Starting filter");
+            System.out.println("Writing detections to topic fp_det_prim");
+            //System.out.println("Writing non-detection to topic fp_clean_prim");
+
+            Dataset<Row> df_det;
+
+            df.createOrReplaceTempView("trdata");
+            //System.out.println(ruleset.genQuery("trdata"));
+            df_det = spark.sql(ruleset.genQuery("trdata"));    		
+
+            /*StreamingQuery dswc = df_det.writeStream()
+                            .outputMode("append")
+                            .format("console")
+                            .start();
+            dswc.awaitTermination();*/
+
+            //Dataset<Row> df_undet = df.except(df_det);
+
+            df_det = df_det.select(df_det.col("tid")).withColumn("isFraud", functions.lit(1));
+            df_det = df_det.select(df_det.col("tid").cast("string").as("key"),functions.to_json(functions.struct("*")).cast("string").as("value"));
+
+            StreamingQuery dsw = df_det.writeStream()
+                            .format("kafka")
+                            .option("kafka.bootstrap.servers",kafkaBootstrapServer)
+                            .option("topic","fp_det_prim")
+                            .option("checkpointLocation",sparkCheckpointDir)
+                            .start();
+
+            /*df_undet = df_undet.select(df_undet.col("tid").cast("string").as("key"), functions.struct("*").cast("string").as("value"));
+
+            StreamingQuery dswu = df_undet.writeStream()
+                            .format("kafka")
+                            .option("kafka.bootstrap.servers",kafkaBootstrapServer)
+                            .option("topic","fp_clean_prim")
+                            .option("checkpointLocation",sparkCheckpointDir)
+                            .start();*/
+
+            dsw.awaitTermination();
+            //dswu.awaitTermination();
 		
 	}
 	
@@ -160,13 +177,13 @@ public final class fpPrimFilter
 		public int ruleCount;
 		public ArrayList<Rule> rules;
 		
-		Ruleset()
+		Ruleset(String rulesetPath)
 		{
 			ruleCount = 0;
 			rules = new ArrayList<Rule>();
 			try
 			{
-				loadRuleset();
+				loadRuleset(rulesetPath);
 			}
 			catch(Exception e)
 			{
@@ -174,9 +191,9 @@ public final class fpPrimFilter
 			}
 		}
 		
-		void loadRuleset() throws Exception
+		void loadRuleset(String rulesetPath) throws Exception
 		{
-			File ruleFile = new File("/home/fprotect/finprotect/fprotect/ruleset.xml");
+			File ruleFile = new File(rulesetPath);
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			Document doc = db.parse(ruleFile);			
